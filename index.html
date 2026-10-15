@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle Diário de Atividades</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif}
+header{background:#fff;border-bottom:1px solid #e2e8f0;padding:24px}
+main{max-width:1200px;margin:auto;padding:24px}
+h1{font-size:26px;font-weight:700;margin:0}
+h2{font-size:19px;font-weight:700;margin:0 0 18px}
+p{line-height:1.6}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:24px 0}
+button,.file-button{cursor:pointer;padding:10px 15px;border:1px solid #cbd5e1;border-radius:8px;background:white;color:#334155;font:inherit}
+button:hover,.file-button:hover{background:#eef2ff}
+.primary,nav .active{background:#4f46e5;color:white;border-color:#4f46e5}
+.primary:hover{background:#4338ca}
+.card{padding:22px;background:white;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;box-shadow:0 2px 8px #0f172a05}
+.grid{display:grid;gap:16px}
+.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+label{display:block;font-size:13px;color:#475569;margin:0 0 6px;font-weight:600}
+input,select,textarea{display:block;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:white;font:inherit;color:#0f172a}
+input:focus,select:focus,textarea:focus{outline:2px solid #a5b4fc}
+textarea{resize:vertical}
+.hidden{display:none!important}
+.muted{color:#64748b;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+.metric strong{display:block;font-size:26px;margin:12px 0}
+.metric small{color:#64748b}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:13px 10px;border-bottom:1px solid #e2e8f0;font-size:13px}
+th{background:#f8fafc;color:#64748b;white-space:nowrap}
+td{vertical-align:middle}
+.scroll{overflow-x:auto}
+.badge{display:inline-block;padding:5px 8px;border-radius:6px;font-size:12px;white-space:nowrap}
+.list-row{padding:13px 0;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:12px;align-items:center}
+.list-row button{font-size:12px;padding:6px 9px}
+.feedback{padding-top:12px;font-size:13px;line-height:1.6}
+.warning{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+dialog{width:calc(100% - 28px);max-width:650px;max-height:90vh;overflow:auto;border:0;border-radius:15px;padding:25px;box-shadow:0 20px 80px #0004}
+dialog::backdrop{background:#0f172a80}
+.form-gap>div{margin-bottom:16px}
+.bar{height:7px;background:#f1f5f9;border-radius:9px;overflow:hidden;margin:9px 0 18px}
+.bar span{display:block;height:100%}
+#notice{position:fixed;bottom:20px;right:20px;max-width:calc(100% - 40px);background:#0f172a;color:white;padding:16px;border-radius:10px;z-index:1000;font-size:14px}
+footer{text-align:center;color:#94a3b8;font-size:12px;padding:24px}
+@media(max-width:800px){.four,.three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:550px){.two,.four,.three{grid-template-columns:1fr}main{padding:15px}.card{padding:17px}header{padding:20px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+  <div style="max-width:1150px;margin:auto">
+    <div class="spread">
+      <div>
+        <h1>✓ Clareza · Controle de atividades</h1>
+        <p class="muted">Organize seu dia e acompanhe o progresso da equipe.</p>
+      </div>
+      <span id="storageState" class="muted">Dados salvos neste navegador</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="storageWarning" class="card warning hidden" role="alert"></div>
+
+  <nav aria-label="Seções">
+    <button class="active" type="button" data-tab="daily">Lançamento diário</button>
+    <button type="button" data-tab="reports">Dashboard consolidado</button>
+    <button type="button" data-tab="settings">Cadastros</button>
+  </nav>
+
+  <section id="daily">
+    <div class="spread" style="margin-bottom:20px">
+      <h2 style="margin:0">Acompanhamento de atividades</h2>
+      <button type="button" class="primary" id="newActivity">＋ Nova atividade</button>
+    </div>
+
+    <div class="card">
+      <div class="grid three">
+        <div><label for="dateFrom">De</label><input type="date" id="dateFrom"></div>
+        <div><label for="dateTo">Até</label><input type="date" id="dateTo"></div>
+        <div><label for="filterPerson">Colaborador</label><select id="filterPerson"></select></div>
+        <div><label for="filterDepartment">Departamento</label><select id="filterDepartment"></select></div>
+        <div><label for="filterStatus">Status</label><select id="filterStatus"></select></div>
+        <div><label for="search">Buscar</label><input type="search" id="search" placeholder="Descrição ou colaborador"></div>
+      </div>
+      <p id="filterMessage" class="feedback" role="alert"></p>
+    </div>
+
+    <div class="grid four" id="dailyMetrics"></div>
+
+    <div class="card">
+      <div class="spread" style="margin-bottom:16px">
+        <div><h2 style="margin-bottom:5px">Atividades</h2><span id="activityCount" class="muted"></span></div>
+        <button type="button" id="exportDaily">↓ Exportar CSV / Excel</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th>Data</th><th>Atividade / Colaborador</th><th>Prioridade</th>
+            <th>Estimado</th><th>Realizado</th><th>Status</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="activityRows"></tbody>
+        </table>
+      </div>
+      <p id="emptyMessage" class="muted" style="text-align:center;padding:25px">
+        Nenhuma atividade encontrada. Cadastre a equipe e adicione sua primeira atividade.
+      </p>
+    </div>
+
+    <div class="grid two">
+      <div class="card"><h2>Fechamento por status</h2><div id="dailyStatuses"></div></div>
+      <div class="card"><h2>Resumo por prioridade</h2><div id="dailyPriorities"></div></div>
+    </div>
+    <p class="muted">Para fechar um único dia, selecione a mesma data nos campos De e Até. Os resumos respeitam todos os filtros.</p>
+  </section>
+
+  <section id="reports" class="hidden">
+    <div class="card">
+      <h2>Dashboard consolidado</h2>
+      <div class="grid three">
+        <div><label for="reportPerson">Colaborador</label><select id="reportPerson"></select></div>
+        <div>
+          <label for="reportPeriod">Período</label>
+          <select id="reportPeriod">
+            <option value="day">Diário</option>
+            <option value="week">Semanal</option>
+            <option value="1">Mensal</option>
+            <option value="2">Bimestral</option>
+            <option value="3">Trimestral</option>
+            <option value="4">Quadrimestral</option>
+            <option value="6">Semestral</option>
+            <option value="12">Anual</option>
+          </select>
+        </div>
+        <div><label for="reportDate">Data de referência</label><input id="reportDate" type="date"></div>
+      </div>
+      <p id="reportRange" class="muted"></p>
+    </div>
+
+    <div class="grid four" id="reportMetrics"></div>
+    <div class="grid two">
+      <div class="card"><h2>Distribuição por prioridade</h2><div id="reportPriorities"></div></div>
+      <div class="card"><h2>Distribuição por status</h2><div id="reportStatuses"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="spread" style="margin-bottom:16px">
+        <h2 style="margin:0">Estatísticas por colaborador</h2>
+        <button type="button" id="exportReport">↓ Exportar atividades</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Colaborador</th><th>Atividades</th><th>Estimado</th><th>Realizado</th><th>Conclusão</th></tr></thead>
+          <tbody id="personStats"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="hidden">
+    <div class="grid two">
+      <div class="card">
+        <h2>1. Departamentos</h2>
+        <p class="muted">Cadastre o departamento antes de adicionar seus colaboradores.</p>
+        <form id="departmentForm">
+          <label for="departmentName">Nome do departamento</label>
+          <input id="departmentName" maxlength="100" required placeholder="Ex.: Administrativo">
+          <button class="primary" type="submit" style="margin-top:12px">Adicionar departamento</button>
+        </form>
+        <p id="departmentFeedback" class="feedback" role="status" aria-live="polite"></p>
+        <div id="departmentList"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Colaboradores</h2>
+        <form id="personForm" class="form-gap">
+          <input type="hidden" id="personId">
+          <div><label for="personName">Nome completo</label><input id="personName" maxlength="120" required></div>
+          <div><label for="personRole">Cargo / Função</label><input id="personRole" maxlength="100" required></div>
+          <div><label for="personDepartment">Departamento</label><select id="personDepartment" required></select></div>
+          <div class="actions">
+            <button type="submit" class="primary" id="personSave">Adicionar colaborador</button>
+            <button type="button" id="cancelPerson" class="hidden">Cancelar edição</button>
+          </div>
+        </form>
+        <p id="personFeedback" class="feedback" role="status" aria-live="polite"></p>
+        <div id="personList"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Backup e armazenamento</h2>
+      <p class="muted">
+        Os dados ficam neste navegador e não são sincronizados com outros dispositivos.
+        Baixe um backup JSON para preservar os cadastros e as atividades.
+        O CSV pode ser aberto no Excel para análise.
+      </p>
+      <div class="actions">
+        <button type="button" id="backup">↓ Baixar backup JSON</button>
+        <label for="restore" class="file-button" style="margin:0">↑ Restaurar backup JSON</label>
+        <input type="file" id="restore" accept=".json,application/json" class="hidden">
+      </div>
+    </div>
+  </section>
+
+  <footer>Clareza · Gestão diária com foco e organização.</footer>
+</main>
+
+<dialog id="activityDialog">
+  <form id="activityForm" class="form-gap">
+    <div class="spread">
+      <h2 id="activityTitle" style="margin:0">Nova atividade</h2>
+      <button type="button" data-close="activityDialog" aria-label="Fechar">✕</button>
+    </div>
+    <input type="hidden" id="activityId">
+
+    <div class="grid two">
+      <div><label for="activityDate">Data da atividade</label><input type="date" id="activityDate" required></div>
+      <div><label for="activityPerson">Colaborador</label><select id="activityPerson" required></select></div>
+    </div>
+
+    <div><label for="activityDepartment">Departamento</label><input id="activityDepartment" readonly></div>
+    <div><label for="activityDescription">Descrição da atividade</label><textarea id="activityDescription" rows="4" maxlength="3000" required></textarea></div>
+
+    <div class="grid two">
+      <div>
+        <label for="activityEstimated">Tempo estimado em minutos</label>
+        <input type="number" id="activityEstimated" min="0" max="525600" step="1" required placeholder="90 = 1h30">
+      </div>
+      <div>
+        <label for="activityElapsed">Tempo decorrido em minutos</label>
+        <input type="number" id="activityElapsed" min="0" max="525600" step="1" required value="0">
+      </div>
+    </div>
+
+    <div class="grid two">
+      <div>
+        <div class="actions" style="margin-bottom:6px">
+          <label for="activityPriority" style="margin:0">Prioridade</label>
+          <button type="button" id="priorityHelp" aria-label="Entender prioridades" style="padding:2px 8px">?</button>
+        </div>
+        <select id="activityPriority"></select>
+      </div>
+      <div><label for="activityStatus">Status</label><select id="activityStatus"></select></div>
+    </div>
+
+    <div class="actions" style="justify-content:flex-end">
+      <button type="button" data-close="activityDialog">Cancelar</button>
+      <button type="submit" class="primary">Salvar atividade</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="helpDialog">
+  <h2>Classificação de prioridades</h2>
+  <div id="priorityDefinitions"></div>
+  <button type="button" class="primary" data-close="helpDialog">Entendi</button>
+</dialog>
+
+<div id="notice" class="hidden" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+const KEY = 'clareza.controle.v2';
+const $ = id => document.getElementById(id);
+
+const statuses = {
+  'Não Iniciado':'#EF4444',
+  'Em Andamento':'#F59E0B',
+  'Pausado':'#F97316',
+  'Concluído':'#10B981'
+};
+
+const priorities = {
+  'Regular':{
+    color:'#64748b',
+    text:'Atividades rotineiras, de baixa criticidade ou de manutenção. Sem impacto no curto prazo se adiadas.'
+  },
+  'Prioridade':{
+    color:'#6366f1',
+    text:'Tarefas importantes alinhadas a objetivos estratégicos ou prazos. Execução na sequência planejada.'
+  },
+  'Urgente':{
+    color:'#F59E0B',
+    text:'Demandas com prazos iminentes ou desvios. Exigem redirecionamento rápido de foco.'
+  },
+  'Emergente':{
+    color:'#e11d48',
+    text:'Situações críticas ou crises imprevistas (desvios financeiros, falhas sistêmicas). Exigem ação imediata e suspensão de outras tarefas.'
+  }
+};
+
+let db = {version:2,departments:[],people:[],activities:[]};
+let memoryOnly = false;
+let noticeTimer;
+
+function escapeHTML(value){
+  return String(value ?? '').replace(/[&<>"']/g, char => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[char]);
+}
+
+function id(){
+  return globalThis.crypto?.randomUUID?.() ||
+    Date.now().toString(36)+Math.random().toString(36).slice(2);
+}
+
+function dateString(date){
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+
+    '-'+String(date.getDate()).padStart(2,'0');
+}
+
+function today(){ return dateString(new Date()); }
+
+function displayDate(value){ return value.split('-').reverse().join('/'); }
+
+function validDate(value){
+  if(typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value+'T12:00:00');
+  return !isNaN(date) && dateString(date) === value;
+}
+
+function time(minutes){
+  return Math.floor(minutes/60)+'h '+String(minutes%60).padStart(2,'0')+'min';
+}
+
+function person(personId){ return db.people.find(p => p.id === personId); }
+function department(departmentId){ return db.departments.find(d => d.id === departmentId); }
+function total(rows,field){ return rows.reduce((sum,row) => sum+row[field],0); }
+
+function notify(message){
+  $('notice').textContent = message;
+  $('notice').classList.remove('hidden');
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => $('notice').classList.add('hidden'),6000);
+}
+
+function warnStorage(){
+  memoryOnly = true;
+  $('storageState').textContent = 'Dados apenas nesta sessão';
+  $('storageWarning').textContent =
+    'O armazenamento local está indisponível ou contém dados incompatíveis. '+
+    'Você pode usar os cadastros nesta sessão. Baixe um backup JSON antes de fechar a página. '+
+    'Dados anteriores incompatíveis não serão sobrescritos.';
+  $('storageWarning').classList.remove('hidden');
+}
+
+function validate(data){
+  if(!data || data.version !== 2 ||
+     !['departments','people','activities'].every(k => Array.isArray(data[k]))) return false;
+
+  const unique = rows => rows.every(row => row && typeof row.id === 'string' && row.id.length > 0) &&
+    new Set(rows.map(row => row.id)).size === rows.length;
+
+  const text = (value,max) => typeof value === 'string' &&
+    value.trim().length > 0 && value.length <= max;
+
+  return unique(data.departments) && unique(data.people) && unique(data.activities) &&
+    data.departments.every(d => text(d.name,100)) &&
+    data.people.every(p => text(p.name,120) && text(p.role,100) &&
+      data.departments.some(d => d.id === p.departmentId)) &&
+    data.activities.every(a =>
+      validDate(a.date) &&
+      data.people.some(p => p.id === a.personId) &&
+      text(a.description,3000) &&
+      Object.prototype.hasOwnProperty.call(statuses,a.status) &&
+      Object.prototype.hasOwnProperty.call(priorities,a.priority) &&
+      [a.estimated,a.elapsed].every(n => Number.isInteger(n) && n >= 0 && n <= 525600)
+    );
+}
+
+function save(next){
+  if(!validate(next)){
+    notify('Não foi possível salvar. Confira os campos informados.');
+    return false;
+  }
+
+  if(!memoryOnly){
+    try { localStorage.setItem(KEY,JSON.stringify(next)); }
+    catch(error){ warnStorage(); }
+  }
+
+  db = next;
+  render();
+  return true;
+}
+
+function fillSelect(elementId,items,placeholder){
+  const element = $(elementId);
+  const selected = element.value;
+
+  element.innerHTML =
+    '<option value="">'+escapeHTML(placeholder)+'</option>'+
+    items.map(item => '<option value="'+escapeHTML(item.id)+'">'+
+      escapeHTML(item.name)+'</option>').join('');
+
+  if(items.some(item => item.id === selected)) element.value = selected;
+}
+
+function badge(text,color){
+  return '<span class="badge" style="background:'+color+'18;color:'+color+'">'+
+    escapeHTML(text)+'</span>';
+}
+
+function switchTab(tab){
+  ['daily','reports','settings'].forEach(name =>
+    $(name).classList.toggle('hidden',name !== tab)
+  );
+  document.querySelectorAll('[data-tab]').forEach(button =>
+    button.classList.toggle('active',button.dataset.tab === tab)
+  );
+}
+
+function metrics(target,rows){
+  const count = rows.length;
+  const done = rows.filter(a => a.status === 'Concluído').length;
+  const running = rows.filter(a => a.status === 'Em Andamento').length;
+
+  const cards = [
+    ['Total de atividades',count,'No período selecionado'],
+    ['Tempo realizado',time(total(rows,'elapsed')),'Estimado: '+time(total(rows,'estimated'))],
+    ['Taxa de conclusão',(count ? Math.round(done/count*100) : 0)+'%',done+' concluída(s)'],
+    ['Em andamento',running,'Atividades em execução']
+  ];
+
+  $(target).innerHTML = cards.map(([title,value,note]) =>
+    '<div class="card metric"><span class="muted">'+title+'</span>'+
+    '<strong>'+value+'</strong><small>'+note+'</small></div>'
+  ).join('');
+}
+
+function summary(target,rows,field){
+  const groups = field === 'status' ? statuses : priorities;
+
+  $(target).innerHTML = Object.entries(groups).map(([name,config]) => {
+    const color = field === 'status' ? config : config.color;
+    const group = rows.filter(a => a[field] === name);
+    const percent = rows.length ? group.length/rows.length*100 : 0;
+
+    return '<div><div class="spread" style="font-size:13px">'+
+      '<span>'+badge(name,color)+'</span><span>'+
+      group.length+' atividade(s)'+
+      (field === 'status' ? ' · '+time(total(group,'elapsed')) : '')+
+      '</span></div><div class="bar"><span style="width:'+percent+
+      '%;background:'+color+'"></span></div></div>';
+  }).join('');
+}
+
+function dailyRows(){
+  const from = $('dateFrom').value;
+  const to = $('dateTo').value;
+
+  if(!validDate(from) || !validDate(to) || from > to){
+    $('filterMessage').textContent = 'Selecione um intervalo de datas válido.';
+    return [];
+  }
+
+  $('filterMessage').textContent = '';
+  const search = $('search').value.trim().toLocaleLowerCase('pt-BR');
+
+  return db.activities.filter(a => {
+    const p = person(a.personId);
+    return a.date >= from && a.date <= to &&
+      (!$('filterPerson').value || a.personId === $('filterPerson').value) &&
+      (!$('filterDepartment').value || p.departmentId === $('filterDepartment').value) &&
+      (!$('filterStatus').value || a.status === $('filterStatus').value) &&
+      (!search || (a.description+' '+p.name).toLocaleLowerCase('pt-BR').includes(search));
+  }).sort((a,b) => b.date.localeCompare(a.date));
+}
+
+function renderDaily(){
+  const rows = dailyRows();
+
+  metrics('dailyMetrics',rows);
+  summary('dailyStatuses',rows,'status');
+  summary('dailyPriorities',rows,'priority');
+
+  $('activityCount').textContent = rows.length+' registro(s)';
+  $('emptyMessage').classList.toggle('hidden',rows.length > 0);
+
+  $('activityRows').innerHTML = rows.map(a => {
+    const p = person(a.personId);
+    const color = statuses[a.status];
+
+    return '<tr style="background:'+color+'08;border-left:3px solid '+color+'">'+
+      '<td style="white-space:nowrap">'+displayDate(a.date)+'</td>'+
+      '<td style="min-width:230px;max-width:380px;overflow-wrap:anywhere">'+
+      '<strong style="white-space:pre-wrap">'+escapeHTML(a.description)+'</strong>'+
+      '<div class="muted" style="margin-top:6px">'+escapeHTML(p.name)+' · '+
+      escapeHTML(department(p.departmentId).name)+'</div></td>'+
+      '<td>'+badge(a.priority,priorities[a.priority].color)+'</td>'+
+      '<td style="white-space:nowrap">'+time(a.estimated)+'</td>'+
+      '<td style="white-space:nowrap">'+time(a.elapsed)+'</td>'+
+      '<td><select data-status="'+escapeHTML(a.id)+'" aria-label="Status da atividade" '+
+      'style="min-width:155px;color:'+color+'">'+
+      Object.keys(statuses).map(status => '<option'+
+        (status === a.status ? ' selected' : '')+'>'+status+'</option>').join('')+
+      '</select></td><td><div class="actions">'+
+      '<button type="button" data-edit-activity="'+escapeHTML(a.id)+'">Editar</button>'+
+      '<button type="button" data-delete-activity="'+escapeHTML(a.id)+'">Excluir</button>'+
+      '</div></td></tr>';
+  }).join('');
+}
+
+function reportInterval(){
+  const reference = $('reportDate').value;
+  if(!validDate(reference)) return null;
+
+  const date = new Date(reference+'T12:00:00');
+  const period = $('reportPeriod').value;
+  let start = new Date(date);
+  let end = new Date(date);
+
+  if(period === 'week'){
+    start.setDate(date.getDate()-((date.getDay()+6)%7));
+    end = new Date(start);
+    end.setDate(start.getDate()+6);
+  }else if(period !== 'day'){
+    const months = Number(period);
+    const firstMonth = Math.floor(date.getMonth()/months)*months;
+    start = new Date(date.getFullYear(),firstMonth,1,12);
+    end = new Date(date.getFullYear(),firstMonth+months,0,12);
+  }
+
+  return [dateString(start),dateString(end)];
+}
+
+function reportRows(){
+  const interval = reportInterval();
+  if(!interval) return [];
+
+  return db.activities.filter(a =>
+    a.date >= interval[0] && a.date <= interval[1] &&
+    (!$('reportPerson').value || a.personId === $('reportPerson').value)
+  );
+}
+
+function renderReports(){
+  const interval = reportInterval();
+  const rows = reportRows();
+
+  $('reportRange').textContent = interval ?
+    displayDate(interval[0])+' a '+displayDate(interval[1])+
+    ' · Períodos de calendário; semanas de segunda a domingo.' :
+    'Escolha uma data de referência válida.';
+
+  metrics('reportMetrics',rows);
+  summary('reportPriorities',rows,'priority');
+  summary('reportStatuses',rows,'status');
+
+  const people = db.people.filter(p => !$('reportPerson').value ||
+    p.id === $('reportPerson').value);
+
+  $('personStats').innerHTML = people.map(p => {
+    const list = rows.filter(a => a.personId === p.id);
+    const done = list.filter(a => a.status === 'Concluído').length;
+    return '<tr><td><strong>'+escapeHTML(p.name)+'</strong>'+
+      '<div class="muted">'+escapeHTML(p.role)+'</div></td>'+
+      '<td>'+list.length+'</td><td>'+time(total(list,'estimated'))+'</td>'+
+      '<td>'+time(total(list,'elapsed'))+'</td>'+
+      '<td>'+(list.length ? Math.round(done/list.length*100) : 0)+'%</td></tr>';
+  }).join('') || '<tr><td colspan="5">Nenhum colaborador cadastrado.</td></tr>';
+}
+
+function renderSettings(){
+  $('departmentList').innerHTML = db.departments.map(d =>
+    '<div class="list-row"><span>'+escapeHTML(d.name)+'</span><div class="actions">'+
+    '<button type="button" data-rename-department="'+escapeHTML(d.id)+'">Renomear</button>'+
+    '<button type="button" data-delete-department="'+escapeHTML(d.id)+'">Excluir</button>'+
+    '</div></div>'
+  ).join('') || '<p class="muted">Nenhum departamento cadastrado.</p>';
+
+  $('personList').innerHTML = db.people.map(p =>
+    '<div class="list-row"><div><strong>'+escapeHTML(p.name)+'</strong>'+
+    '<div class="muted">'+escapeHTML(p.role)+' · '+
+    escapeHTML(department(p.departmentId).name)+'</div></div>'+
+    '<div class="actions"><button type="button" data-edit-person="'+escapeHTML(p.id)+'">Editar</button>'+
+    '<button type="button" data-delete-person="'+escapeHTML(p.id)+'">Excluir</button>'+
+    '</div></div>'
+  ).join('') || '<p class="muted">Nenhum colaborador cadastrado.</p>';
+}
+
+function render(){
+  fillSelect('personDepartment',db.departments,'Selecione o departamento');
+  fillSelect('filterDepartment',db.departments,'Todos os departamentos');
+  fillSelect('activityPerson',db.people,'Selecione o colaborador');
+  fillSelect('filterPerson',db.people,'Todos os colaboradores');
+  fillSelect('reportPerson',db.people,'Todos os colaboradores');
+  renderSettings();
+  renderDaily();
+  renderReports();
+}
+
+function resetPerson(){
+  $('personForm').reset();
+  $('personId').value = '';
+  $('personSave').textContent = 'Adicionar colaborador';
+  $('cancelPerson').classList.add('hidden');
+}
+
+$('departmentForm').addEventListener('submit',event => {
+  event.preventDefault();
+
+  const name = $('departmentName').value.trim().replace(/\s+/g,' ');
+  if(!name){
+    $('departmentFeedback').textContent = 'Digite o nome do departamento.';
+    return;
+  }
+
+  const existing = db.departments.find(d =>
+    d.name.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'));
+
+  if(existing){
+    $('personDepartment').value = existing.id;
+    $('departmentFeedback').textContent =
+      'Este departamento já existe e foi selecionado para o colaborador.';
+    return;
+  }
+
+  const entry = {id:id(),name};
+
+  if(save({...db,departments:[...db.departments,entry]})){
+    $('departmentName').value = '';
+    $('personDepartment').value = entry.id;
+    $('departmentFeedback').textContent =
+      '✓ Departamento cadastrado e selecionado. Agora cadastre o colaborador.';
+    $('departmentFeedback').style.color = '#047857';
+  }
+});
+
+$('personForm').addEventListener('submit',event => {
+  event.preventDefault();
+
+  const entry = {
+    id:$('personId').value || id(),
+    name:$('personName').value.trim(),
+    role:$('personRole').value.trim(),
+    departmentId:$('personDepartment').value
+  };
+
+  if(!entry.name || !entry.role || !department(entry.departmentId)){
+    $('personFeedback').textContent = 'Informe nome, cargo e departamento.';
+    return;
+  }
+
+  const exists = db.people.some(p => p.id === entry.id);
+  const people = exists ? db.people.map(p => p.id === entry.id ? entry : p) :
+    [...db.people,entry];
+
+  if(save({...db,people})){
+    resetPerson();
+    $('personFeedback').textContent = '✓ Colaborador salvo com sucesso.';
+    $('personFeedback').style.color = '#047857';
+  }
+});
+
+$('cancelPerson').addEventListener('click',resetPerson);
+
+function updateActivityDepartment(){
+  const p = person($('activityPerson').value);
+  $('activityDepartment').value = p ?
+    department(p.departmentId).name : 'Selecione um colaborador';
+}
+
+function openActivity(activityId){
+  if(!db.people.length){
+    switchTab('settings');
+    notify('Cadastre primeiro um departamento e um colaborador.');
+    $('departmentName').focus();
+    return;
+  }
+
+  const a = db.activities.find(item => item.id === activityId);
+
+  $('activityForm').reset();
+  $('activityId').value = a?.id || '';
+  $('activityTitle').textContent = a ? 'Editar atividade' : 'Nova atividade';
+  $('activityDate').value = a?.date || today();
+  $('activityPerson').value = a?.personId || '';
+  $('activityDescription').value = a?.description || '';
+  $('activityEstimated').value = a?.estimated ?? '';
+  $('activityElapsed').value = a?.elapsed ?? 0;
+  $('activityPriority').value = a?.priority || 'Regular';
+  $('activityStatus').value = a?.status || 'Não Iniciado';
+
+  updateActivityDepartment();
+  $('activityDialog').showModal();
+}
+
+$('newActivity').addEventListener('click',() => openActivity());
+$('activityPerson').addEventListener('change',updateActivityDepartment);
+
+$('activityForm').addEventListener('submit',event => {
+  event.preventDefault();
+
+  const entry = {
+    id:$('activityId').value || id(),
+    date:$('activityDate').value,
+    personId:$('activityPerson').value,
+    description:$('activityDescription').value.trim(),
+    estimated:Number($('activityEstimated').value),
+    elapsed:Number($('activityElapsed').value),
+    priority:$('activityPriority').value,
+    status:$('activityStatus').value
+  };
+
+  const exists = db.activities.some(a => a.id === entry.id);
+  const activities = exists ?
+    db.activities.map(a => a.id === entry.id ? entry : a) :
+    [...db.activities,entry];
+
+  if(save({...db,activities})){
+    $('dateFrom').value = $('dateTo').value = entry.date;
+    ['filterPerson','filterDepartment','filterStatus','search'].forEach(
+      name => $(name).value = ''
+    );
+    renderDaily();
+    switchTab('daily');
+    $('activityDialog').close();
+    notify(memoryOnly ?
+      'Atividade inserida nesta sessão. Baixe um backup para preservá-la.' :
+      'Atividade salva com sucesso.');
+  }
+});
+
+$('activityRows').addEventListener('change',event => {
+  const activityId = event.target.dataset.status;
+  if(!activityId) return;
+
+  save({
+    ...db,
+    activities:db.activities.map(a => a.id === activityId ?
+      {...a,status:event.target.value} : a)
+  });
+});
+
+document.addEventListener('click',event => {
+  const button = event.target.closest('button');
+  if(!button) return;
+  const action = button.dataset;
+
+  if(action.tab) switchTab(action.tab);
+  if(action.close) $(action.close).close();
+  if(action.editActivity) openActivity(action.editActivity);
+
+  if(action.deleteActivity && confirm('Excluir esta atividade?')){
+    save({...db,activities:db.activities.filter(a => a.id !== action.deleteActivity)});
+  }
+
+  if(action.renameDepartment){
+    const d = department(action.renameDepartment);
+    const name = prompt('Nome do departamento:',d.name)?.trim().replace(/\s+/g,' ');
+    if(!name) return;
+    if(name.length > 100) return notify('Use no máximo 100 caracteres.');
+
+    if(db.departments.some(item => item.id !== d.id &&
+      item.name.toLocaleLowerCase('pt-BR') === name.toLocaleLowerCase('pt-BR'))){
+      return notify('Já existe um departamento com esse nome.');
+    }
+
+    save({...db,departments:db.departments.map(item =>
+      item.id === d.id ? {...item,name} : item)});
+  }
+
+  if(action.deleteDepartment){
+    if(db.people.some(p => p.departmentId === action.deleteDepartment)){
+      return notify('Transfira ou exclua os colaboradores deste departamento primeiro.');
+    }
+
+    if(confirm('Excluir este departamento?')){
+      save({...db,departments:db.departments.filter(d => d.id !== action.deleteDepartment)});
+    }
+  }
+
+  if(action.editPerson){
+    const p = person(action.editPerson);
+    $('personId').value = p.id;
+    $('personName').value = p.name;
+    $('personRole').value = p.role;
+    $('personDepartment').value = p.departmentId;
+    $('personSave').textContent = 'Salvar alterações';
+    $('cancelPerson').classList.remove('hidden');
+    $('personName').focus();
+  }
+
+  if(action.deletePerson){
+    if(db.activities.some(a => a.personId === action.deletePerson)){
+      return notify('Este colaborador possui atividades. Exclua ou reatribua os registros primeiro.');
+    }
+
+    if(confirm('Excluir este colaborador?')){
+      if(save({...db,people:db.people.filter(p => p.id !== action.deletePerson)})){
+        resetPerson();
+      }
+    }
+  }
+});
+
+function download(content,type,name){
+  const url = URL.createObjectURL(new Blob([content],{type}));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = name;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url),1000);
+}
+
+function csvCell(value){
+  let text = String(value ?? '');
+  if(/^\s*[=+\-@\t\r\n]/.test(text)) text = "'"+text;
+  return '"'+text.replace(/"/g,'""')+'"';
+}
+
+function exportCSV(rows){
+  if(!rows.length) return notify('Não há atividades neste filtro para exportar.');
+
+  const table = [
+    ['Data','Colaborador','Cargo','Departamento','Descrição',
+     'Estimado (min)','Decorrido (min)','Prioridade','Status'],
+    ...rows.map(a => {
+      const p = person(a.personId);
+      return [
+        a.date,p.name,p.role,department(p.departmentId).name,
+        a.description,a.estimated,a.elapsed,a.priority,a.status
+      ];
+    })
+  ];
+
+  const content = '\uFEFF'+table.map(row => row.map(csvCell).join(';')).join('\r\n');
+  download(content,'text/csv;charset=utf-8','atividades-'+today()+'.csv');
+}
+
+$('exportDaily').addEventListener('click',() => exportCSV(dailyRows()));
+$('exportReport').addEventListener('click',() => exportCSV(reportRows()));
+
+$('backup').addEventListener('click',() =>
+  download(JSON.stringify(db,null,2),'application/json','backup-clareza-'+today()+'.json')
+);
+
+$('restore').addEventListener('change',async event => {
+  const file = event.target.files[0];
+  if(!file) return;
+
+  try{
+    if(file.size > 10*1024*1024) throw new Error('O arquivo excede 10 MB.');
+    const next = JSON.parse(await file.text());
+
+    if(!validate(next)) throw new Error('Backup inválido ou incompatível.');
+
+    if(!confirm('Este backup substituirá todos os dados atuais. Continuar?')) return;
+
+    let persisted = false;
+    try{
+      localStorage.setItem(KEY,JSON.stringify(next));
+      persisted = true;
+    }catch(error){
+      warnStorage();
+    }
+
+    db = next;
+
+    if(persisted){
+      memoryOnly = false;
+      $('storageState').textContent = 'Dados salvos neste navegador';
+      $('storageWarning').classList.add('hidden');
+    }
+
+    resetPerson();
+    render();
+    notify(persisted ? 'Backup restaurado.' :
+      'Backup carregado nesta sessão. O navegador não permitiu armazenamento permanente.');
+  }catch(error){
+    notify('Não foi possível restaurar: '+error.message);
+  }finally{
+    event.target.value = '';
+  }
+});
+
+['dateFrom','dateTo','filterPerson','filterDepartment','filterStatus','search'].forEach(
+  name => $(name).addEventListener('input',renderDaily)
+);
+
+['reportPerson','reportPeriod','reportDate'].forEach(
+  name => $(name).addEventListener('input',renderReports)
+);
+
+$('priorityHelp').addEventListener('click',() => $('helpDialog').showModal());
+
+$('activityStatus').innerHTML = Object.keys(statuses).map(
+  name => '<option>'+name+'</option>'
+).join('');
+
+$('filterStatus').innerHTML = '<option value="">Todos os status</option>'+
+  Object.keys(statuses).map(name => '<option>'+name+'</option>').join('');
+
+$('activityPriority').innerHTML = Object.keys(priorities).map(
+  name => '<option>'+name+'</option>'
+).join('');
+
+$('priorityDefinitions').innerHTML = Object.entries(priorities).map(
+  ([name,config]) => '<div style="margin-bottom:22px">'+badge(name,config.color)+
+    '<p class="muted">'+config.text+'</p></div>'
+).join('');
+
+$('dateFrom').value = $('dateTo').value = $('reportDate').value = today();
+
+try{
+  const raw = localStorage.getItem(KEY);
+  if(raw){
+    const parsed = JSON.parse(raw);
+    if(!validate(parsed)) throw new Error('Dados incompatíveis');
+    db = parsed;
+  }
+}catch(error){
+  warnStorage();
+}
+
+render();
+</script>
+</body>
+</html>
